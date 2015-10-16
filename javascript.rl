@@ -238,23 +238,53 @@ InputElement =
 	RightBracePunctuator when { !(permit & PERMIT_TMPL_TAIL) };
 
 main := |*
-	InputElement => { console.log(data.slice(ts, te)); };
+	0x03 => { process.exit(); };
+	InputElement => { console.log(data.slice(ts, te).toString()); };
 *|;
 
 write data;
 }%%
 
+var through2 = require('through2');
+
 var PERMIT_REGEXP = 1 << 0;
 var PERMIT_TMPL_TAIL = 1 << 1;
 
-module.exports = function (data) {
-	'use strict';
-	data = new Buffer(data);
-	var cs, p = 0, pe = data.length, eof = pe, ts, te, act;
+function lexer() {
+	var cs, ts, te, act;
 	var permit = 0;
-	%%{
-		write init;
-		write exec;
-	}%%
-};
+	var lastChunk;
 
+	%%write init;
+
+	function exec(data) {
+		var p = 0, pe, eof;
+		if (data !== null) {
+			pe = data.length;
+			eof = -1;
+		} else {
+			pe = eof = 0;
+		}
+		%%write exec;
+	}
+
+	return through2(function (data, enc, callback) {
+		if (lastChunk) {
+			data = Buffer.concat([lastChunk, data]);
+			lastChunk = undefined;
+		}
+		exec(data);
+		console.log({ ts, te, data: data.toString() });
+		if (ts) {
+			lastChunk = data.slice(ts);
+			te -= ts;
+			ts = 0;
+		}
+		callback();
+	}, function (callback) {
+		exec(null);
+	});
+}
+
+process.stdin.setRawMode(true);
+process.stdin.pipe(lexer()).pipe(process.stdout);
