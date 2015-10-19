@@ -1,4 +1,4 @@
 node_modules
 *.ri
-javascript.js
+lexer.js
 unicode.rl

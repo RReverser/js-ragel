@@ -2,16 +2,13 @@
   "name": "js-ragel",
   "version": "1.0.0",
   "description": "JS lexer in Ragel",
-  "main": "javascript.js",
+  "main": "cli.js",
   "scripts": {
     "build-unicode": "node gen-unicode",
-    "build": "../ragel/bin/ragel -P javascript.rl",
+    "build": "../ragel/bin/ragel -P lexer.rl",
     "prepublish": "npm run build-unicode && npm run build"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/RReverser/js-ragel.git"
-  },
+  "repository": "RReverser/js-ragel",
   "keywords": [
     "javascript",
     "lexer",
@@ -20,16 +17,12 @@
   ],
   "author": "Ingvar Stepanyan <me@rreverser.com> (https://rreverser.com/)",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/RReverser/js-ragel/issues"
-  },
-  "homepage": "https://github.com/RReverser/js-ragel#readme",
   "dependencies": {
-    "JSONStream": "^1.0.6",
-    "through2": "^2.0.0"
+    "JSONStream": "^1.0.6"
   },
   "devDependencies": {
-    "highland": "^2.5.1"
+    "highland": "^2.5.1",
+    "through2": "^2.0.0"
   },
   "private": true
 }

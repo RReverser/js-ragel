@@ -2,6 +2,7 @@
 machine javascript;
 
 getkey data[p];
+access this.;
 alphtype u8;
 
 action lookahead { fhold; }
@@ -232,74 +233,59 @@ InputElement =
 	LineTerminator |
 	Comment |
 	CommonToken |
-	RegularExpressionLiteral when { permit & PERMIT_REGEXP } |
-	DivPunctuator when { !(permit & PERMIT_REGEXP) }
-	TemplateSubstitutionTail when { permit & PERMIT_TMPL_TAIL } |
-	RightBracePunctuator when { !(permit & PERMIT_TMPL_TAIL) };
+	RegularExpressionLiteral when { this.permit.regexp } |
+	DivPunctuator when { !this.permit.regexp }
+	TemplateSubstitutionTail when { this.permit.tmplTail } |
+	RightBracePunctuator when { !this.permit.tmplTail };
 
 main := |*
-	InputElement => { this.push({ raw: data.slice(ts, te).toString() }); };
+	InputElement => { this.push({ raw: data.slice(this.ts, this.te).toString() }); };
 *|;
 
 write data;
 }%%
 
-const JSONStream = require('JSONStream');
-const through2 = require('through2');
+module.exports = class Lexer extends require('stream').Transform {
+	constructor() {
+		super({
+			allowHalfOpen: false,
+			objectMode: true
+		});
+		%%write init;
+		this.permit = {
+			regexp: false,
+			tmplTail: false
+		};
+		this.lastChunk = null;
+	}
 
-const PERMIT_REGEXP = 1 << 0;
-const PERMIT_TMPL_TAIL = 1 << 1;
-
-function lexer() {
-	let cs, ts, te, act;
-	let permit = 0;
-	let lastChunk;
-
-	%%write init;
-
-	function exec(data, callback) {
+	_exec(data, callback) {
 		let p = 0;
-		const isLast = !data;
-		if (lastChunk) {
-			p = lastChunk.length;
-			data = data ? Buffer.concat([ lastChunk, data ]) : lastChunk;
-			lastChunk = undefined;
+		const isLast = data === null;
+		if (this.lastChunk !== null) {
+			p = this.lastChunk.length;
+			data = data ? Buffer.concat([ this.lastChunk, data ]) : this.lastChunk;
+			this.lastChunk = null;
 		}
 		const pe = data ? data.length : 0;
 		const eof = isLast ? pe : -1;
 		%%write exec;
-		if (cs === 0 || ts >= 0 && isLast) {
-			return callback(new Error('Could not parse token starting with ' + JSON.stringify(data.slice(ts).toString())));
+		if (this.cs === 0 || this.ts >= 0 && isLast) {
+			return callback(new Error('Could not parse token starting with ' + JSON.stringify(data.slice(this.ts).toString())));
 		}
-		if (ts >= 0) {
-			lastChunk = data.slice(ts);
-			te -= ts;
-			ts = 0;
+		if (this.ts >= 0) {
+			this.lastChunk = data.slice(this.ts);
+			this.te -= this.ts;
+			this.ts = 0;
 		}
 		callback();
 	}
 
-	return through2.obj(function (data, enc, callback) {
-		exec.call(this, data, callback);
-	}, function (callback) {
-		exec.call(this, null, callback);
-	});
-}
-
-process.stdin.setRawMode(true);
-
-process.stdin
-.pipe(through2(function (data, enc, callback) {
-	if (data[data.length - 1] === 0x03) {
-		this.push(data.slice(0, -1));
-		this.push(null);
-		process.stdin.setRawMode(false);
-		process.stdin.end();
-	} else {
-		this.push(data);
+	_transform(data, enc, callback) {
+		this._exec(data, callback);
 	}
-	callback();
-}))
-.pipe(lexer())
-.pipe(JSONStream.stringify('[\n', ',\n', '\n]\n'))
-.pipe(process.stdout);
+
+	_flush(callback) {
+		this._exec(null, callback);
+	}
+};
