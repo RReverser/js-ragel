@@ -24,9 +24,12 @@
     "url": "https://github.com/RReverser/js-ragel/issues"
   },
   "homepage": "https://github.com/RReverser/js-ragel#readme",
-  "devDependencies": {
-    "highland": "^2.5.1",
+  "dependencies": {
+    "JSONStream": "^1.0.6",
     "through2": "^2.0.0"
+  },
+  "devDependencies": {
+    "highland": "^2.5.1"
   },
   "private": true
 }

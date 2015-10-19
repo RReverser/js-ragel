@@ -238,13 +238,18 @@ InputElement =
 	RightBracePunctuator when { !(permit & PERMIT_TMPL_TAIL) };
 
 main := |*
-	0x03 => { process.exit(); };
-	InputElement => { stream.push(data.slice(ts, te).toString() + '\n'); };
+	InputElement => { this.push({ raw: data.slice(ts, te).toString(), ts, te, data: data.toString() }); };
+	0x03 => {
+		this.push(null);
+		process.stdin.setRawMode(false);
+		process.stdin.end();
+	};
 *|;
 
 write data;
 }%%
 
+var JSONStream = require('JSONStream');
 var through2 = require('through2');
 
 var PERMIT_REGEXP = 1 << 0;
@@ -257,7 +262,7 @@ function lexer() {
 
 	%%write init;
 
-	function exec(stream, data) {
+	function exec(data) {
 		var p = 0, pe, eof;
 		if (data !== null) {
 			pe = data.length;
@@ -266,14 +271,17 @@ function lexer() {
 			pe = eof = 0;
 		}
 		%%write exec;
+		if (cs === 0) {
+			this.emit('error', new Error('Could not parse token starting with ' + data.slice(ts)));
+		}
 	}
 
-	return through2(function (data, enc, callback) {
+	return through2.obj(function (data, enc, callback) {
 		if (lastChunk) {
 			data = Buffer.concat([lastChunk, data]);
 			lastChunk = undefined;
 		}
-		exec(this, data);
+		exec.call(this, data);
 		if (ts >= 0) {
 			lastChunk = data.slice(ts);
 			te -= ts;
@@ -281,10 +289,14 @@ function lexer() {
 		}
 		callback();
 	}, function (callback) {
-		exec(this, null);
+		exec.call(this, null);
 		callback();
 	});
 }
 
 process.stdin.setRawMode(true);
-process.stdin.pipe(lexer()).pipe(process.stdout);
+
+process.stdin
+.pipe(lexer())
+.pipe(JSONStream.stringify('[\n', ',\n', '\n]\n'))
+.pipe(process.stdout);
