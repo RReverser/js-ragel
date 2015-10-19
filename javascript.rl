@@ -274,8 +274,7 @@ function lexer() {
 			lastChunk = undefined;
 		}
 		exec(data);
-		console.log({ ts, te, data: data.toString() });
-		if (ts) {
+		if (ts >= 0) {
 			lastChunk = data.slice(ts);
 			te -= ts;
 			ts = 0;
