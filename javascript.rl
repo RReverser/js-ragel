@@ -239,11 +239,6 @@ InputElement =
 
 main := |*
 	InputElement => { this.push({ raw: data.slice(ts, te).toString() }); };
-	0x03 => {
-		this.push(null);
-		process.stdin.setRawMode(false);
-		process.stdin.end();
-	};
 *|;
 
 write data;
@@ -262,7 +257,7 @@ function lexer() {
 
 	%%write init;
 
-	function exec(data) {
+	function exec(data, callback) {
 		let p = 0;
 		const isLast = !data;
 		if (lastChunk) {
@@ -273,27 +268,38 @@ function lexer() {
 		const pe = data ? data.length : 0;
 		const eof = isLast ? pe : -1;
 		%%write exec;
-		if (cs === 0) {
-			this.emit('error', new Error('Could not parse token starting with ' + data.slice(ts)));
-		} else if (ts >= 0) {
+		if (cs === 0 || ts >= 0 && isLast) {
+			return callback(new Error('Could not parse token starting with ' + JSON.stringify(data.slice(ts).toString())));
+		}
+		if (ts >= 0) {
 			lastChunk = data.slice(ts);
 			te -= ts;
 			ts = 0;
 		}
+		callback();
 	}
 
 	return through2.obj(function (data, enc, callback) {
-		exec.call(this, data);
-		callback();
+		exec.call(this, data, callback);
 	}, function (callback) {
-		exec.call(this, null);
-		callback();
+		exec.call(this, null, callback);
 	});
 }
 
 process.stdin.setRawMode(true);
 
 process.stdin
+.pipe(through2(function (data, enc, callback) {
+	if (data[data.length - 1] === 0x03) {
+		this.push(data.slice(0, -1));
+		this.push(null);
+		process.stdin.setRawMode(false);
+		process.stdin.end();
+	} else {
+		this.push(data);
+	}
+	callback();
+}))
 .pipe(lexer())
 .pipe(JSONStream.stringify('[\n', ',\n', '\n]\n'))
 .pipe(process.stdout);
