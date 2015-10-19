@@ -45,7 +45,7 @@ UnicodeEscapeSequence =
 	'u' xdigit{4}
 	'u{' xdigit+ '}';
 
-MultiLineComment = '/*' any* '*/';
+MultiLineComment = '/*' any* :>> '*/';
 
 SingleLineComment = '//' (^LineTerminator)*;
 
@@ -238,7 +238,7 @@ InputElement =
 	RightBracePunctuator when { !(permit & PERMIT_TMPL_TAIL) };
 
 main := |*
-	InputElement => { this.push({ raw: data.slice(ts, te).toString(), ts, te, data: data.toString() }); };
+	InputElement => { this.push({ raw: data.slice(ts, te).toString() }); };
 	0x03 => {
 		this.push(null);
 		process.stdin.setRawMode(false);
@@ -263,30 +263,26 @@ function lexer() {
 	%%write init;
 
 	function exec(data) {
-		var p = 0, pe, eof;
-		if (data !== null) {
-			pe = data.length;
-			eof = -1;
-		} else {
-			pe = eof = 0;
+		var p = 0, isLast = !data;
+		if (lastChunk) {
+			p = lastChunk.length;
+			data = data ? Buffer.concat([ lastChunk, data ]) : lastChunk;
+			lastChunk = undefined;
 		}
+		var pe = data ? data.length : 0;
+		var eof = isLast ? pe : -1;
 		%%write exec;
 		if (cs === 0) {
 			this.emit('error', new Error('Could not parse token starting with ' + data.slice(ts)));
-		}
-	}
-
-	return through2.obj(function (data, enc, callback) {
-		if (lastChunk) {
-			data = Buffer.concat([lastChunk, data]);
-			lastChunk = undefined;
-		}
-		exec.call(this, data);
-		if (ts >= 0) {
+		} else if (ts >= 0) {
 			lastChunk = data.slice(ts);
 			te -= ts;
 			ts = 0;
 		}
+	}
+
+	return through2.obj(function (data, enc, callback) {
+		exec.call(this, data);
 		callback();
 	}, function (callback) {
 		exec.call(this, null);
