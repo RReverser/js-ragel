@@ -239,7 +239,7 @@ InputElement =
 
 main := |*
 	0x03 => { process.exit(); };
-	InputElement => { console.log(data.slice(ts, te).toString()); };
+	InputElement => { stream.push(data.slice(ts, te).toString() + '\n'); };
 *|;
 
 write data;
@@ -257,7 +257,7 @@ function lexer() {
 
 	%%write init;
 
-	function exec(data) {
+	function exec(stream, data) {
 		var p = 0, pe, eof;
 		if (data !== null) {
 			pe = data.length;
@@ -273,7 +273,7 @@ function lexer() {
 			data = Buffer.concat([lastChunk, data]);
 			lastChunk = undefined;
 		}
-		exec(data);
+		exec(this, data);
 		if (ts >= 0) {
 			lastChunk = data.slice(ts);
 			te -= ts;
@@ -281,7 +281,8 @@ function lexer() {
 		}
 		callback();
 	}, function (callback) {
-		exec(null);
+		exec(this, null);
+		callback();
 	});
 }
 
