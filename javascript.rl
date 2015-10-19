@@ -249,28 +249,29 @@ main := |*
 write data;
 }%%
 
-var JSONStream = require('JSONStream');
-var through2 = require('through2');
+const JSONStream = require('JSONStream');
+const through2 = require('through2');
 
-var PERMIT_REGEXP = 1 << 0;
-var PERMIT_TMPL_TAIL = 1 << 1;
+const PERMIT_REGEXP = 1 << 0;
+const PERMIT_TMPL_TAIL = 1 << 1;
 
 function lexer() {
-	var cs, ts, te, act;
-	var permit = 0;
-	var lastChunk;
+	let cs, ts, te, act;
+	let permit = 0;
+	let lastChunk;
 
 	%%write init;
 
 	function exec(data) {
-		var p = 0, isLast = !data;
+		let p = 0;
+		const isLast = !data;
 		if (lastChunk) {
 			p = lastChunk.length;
 			data = data ? Buffer.concat([ lastChunk, data ]) : lastChunk;
 			lastChunk = undefined;
 		}
-		var pe = data ? data.length : 0;
-		var eof = isLast ? pe : -1;
+		const pe = data ? data.length : 0;
+		const eof = isLast ? pe : -1;
 		%%write exec;
 		if (cs === 0) {
 			this.emit('error', new Error('Could not parse token starting with ' + data.slice(ts)));
