@@ -96,7 +96,9 @@ Punctuator =
 	'='   | '+='   | '-='  | '*='  | '%='  | '<<=' |
 	'>>=' | '>>>=' | '&='  | '|='  | '^='  | '=>'  ;
 
-DivPunctuator = '/' | '/=';
+DivPunctuator =
+	'/' |
+	'/=';
 
 RightBracePunctuator = '}';
 
@@ -232,7 +234,7 @@ InputElement =
 	Comment |
 	CommonToken |
 	RegularExpressionLiteral when { this.permitRegexp } |
-	DivPunctuator when { !this.permitRegexp }
+	DivPunctuator when { !this.permitRegexp } |
 	TemplateSubstitutionTail when { this.tmplLevel } |
 	RightBracePunctuator when { !this.tmplLevel };
 
