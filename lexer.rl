@@ -54,9 +54,17 @@ Comment =
 	MultiLineComment |
 	SingleLineComment;
 
-IdentifierStart = UnicodeIDStart | [$_] | '\\' UnicodeEscapeSequence;
+IdentifierStart =
+	UnicodeIDStart |
+	[$_] |
+	'\\' UnicodeEscapeSequence;
 
-IdentifierPart = UnicodeIDContinue | [$_] | '\\' UnicodeEscapeSequence | ZWNJ | ZWJ;
+IdentifierPart =
+	UnicodeIDContinue |
+	[$_] |
+	'\\' UnicodeEscapeSequence |
+	ZWNJ |
+	ZWJ;
 
 IdentifierName = IdentifierStart IdentifierPart*;
 
@@ -94,7 +102,9 @@ RightBracePunctuator = '}';
 
 NullLiteral = 'null';
 
-BooleanLiteral = 'true' | 'false';
+BooleanLiteral =
+	'true' |
+	'false';
 
 ReservedWord =
 	Keyword |
@@ -221,8 +231,8 @@ InputElement =
 	LineTerminator |
 	Comment |
 	CommonToken |
-	RegularExpressionLiteral when { this.permit.regexp } |
-	DivPunctuator when { !this.permit.regexp }
+	RegularExpressionLiteral when { this.permitRegexp } |
+	DivPunctuator when { !this.permitRegexp }
 	TemplateSubstitutionTail when { this.tmplLevel } |
 	RightBracePunctuator when { !this.tmplLevel };
 
@@ -250,7 +260,7 @@ module.exports = class Lexer extends require('stream').Transform {
 		const isLast = data === null;
 		if (this.lastChunk !== null) {
 			p = this.lastChunk.length;
-			data = data ? Buffer.concat([ this.lastChunk, data ]) : this.lastChunk;
+			data = isLast ? this.lastChunk : Buffer.concat([ this.lastChunk, data ]);
 			this.lastChunk = null;
 		}
 		const pe = data ? data.length : 0;
