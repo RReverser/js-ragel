@@ -3,5 +3,5 @@ const Lexer = require('./lexer');
 
 process.stdin
 .pipe(new Lexer())
-.pipe(JSONStream.stringify('[\n', ',\n', '\n]\n'))
+.pipe(JSONStream.stringify('', '\n', ''))
 .pipe(process.stdout);

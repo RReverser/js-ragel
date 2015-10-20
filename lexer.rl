@@ -203,23 +203,11 @@ TemplateCharacter =
 	LineTerminatorSequence |
 	^([`\\$] | LineTerminator);
 
-NoSubstitutionTemplate = '`' TemplateCharacter* '`';
-
-TemplateHead = '`' TemplateCharacter* '${';
-
-TemplateMiddle =
-	'}' TemplateCharacter* '${';
-
-TemplateTail =
-	'}' TemplateCharacter* '`';
+Template =
+	'`' @{ this.tmplLevel++; } TemplateCharacter* ('`' | '${');
 
 TemplateSubstitutionTail =
-	TemplateMiddle |
-	TemplateTail;
-
-Template =
-	NoSubstitutionTemplate
-	TemplateHead;
+	'}' TemplateCharacter* ('${' | '`' @{ this.tmplLevel--; });
 
 CommonToken =
 	IdentifierName |
@@ -235,8 +223,8 @@ InputElement =
 	CommonToken |
 	RegularExpressionLiteral when { this.permit.regexp } |
 	DivPunctuator when { !this.permit.regexp }
-	TemplateSubstitutionTail when { this.permit.tmplTail } |
-	RightBracePunctuator when { !this.permit.tmplTail };
+	TemplateSubstitutionTail when { this.tmplLevel } |
+	RightBracePunctuator when { !this.tmplLevel };
 
 main := |*
 	InputElement => { this.push({ raw: data.slice(this.ts, this.te).toString() }); };
@@ -252,10 +240,8 @@ module.exports = class Lexer extends require('stream').Transform {
 			objectMode: true
 		});
 		%%write init;
-		this.permit = {
-			regexp: false,
-			tmplTail: false
-		};
+		this.tmplLevel = 0;
+		this.permitRegexp = false;
 		this.lastChunk = null;
 	}
 
