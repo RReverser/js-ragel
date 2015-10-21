@@ -9,24 +9,28 @@ action lookahead { fhold; }
 action strict { strict }
 
 action startNumber {
-	this.number = 0;
+	this.token.number = 0;
+}
+
+action startHexNumber {
+	this.hexNumber = 0;
 }
 
 action startString {
-	this.string = '';
+	this.token.string = '';
 	this.decoder.charReceived = this.decoder.charLength = 0;
 }
 
 action appendByte {
-	this.string += this.decoder.write(fc);
+	this.token.string += this.decoder.write(data.slice(p, p + 1));
 }
 
-action appendCharCode {
-	this.string += String.fromCharCode(this.number);
+action appendHexCharCode {
+	this.token.string += String.fromCharCode(this.hexNumber);
 }
 
-action appendCodePoint {
-	this.string += String.fromCodePoint(this.number);
+action appendHexCodePoint {
+	this.token.string += String.fromCodePoint(this.hexNumber);
 }
 
 include "unicode.rl";
@@ -39,9 +43,9 @@ LF = '\n';
 CR = '\r';
 
 hexDigit =
-	[0-9] @{ this.number = (this.number << 4) | (fc - CHR_0) } |
-	[A-F] @{ this.number = (this.number << 4) | (fc - CHR_A) } |
-	[a-f] @{ this.number = (this.number << 4) | (fc - CHR_a) };
+	[0-9] @{ this.hexNumber = (this.hexNumber << 4) | (fc - CHR_0) } |
+	[A-F] @{ this.hexNumber = (this.hexNumber << 4) | (fc - CHR_A) } |
+	[a-f] @{ this.hexNumber = (this.hexNumber << 4) | (fc - CHR_a) };
 
 WhiteSpace =
 	TAB |
@@ -68,11 +72,11 @@ LineTerminatorSequence =
 	PS @{ this.lineTerminator = '\u2029'; };
 
 HexEscapeSequence =
-	'x' hexDigit{2} >startNumber %appendCharCode;
+	'x' hexDigit{2} >startHexNumber @appendHexCharCode;
 
 UnicodeEscapeSequence =
-	'u' hexDigit{4} >startNumber @appendCharCode |
-	'u{' hexDigit+ >startNumber '}' @appendCodePoint;
+	'u' hexDigit{4} >startHexNumber @appendHexCharCode |
+	'u{' hexDigit+ >startHexNumber '}' @appendHexCodePoint;
 
 MultiLineComment = '/*' any* :>> '*/';
 
@@ -159,16 +163,16 @@ DecimalLiteral =
 			'.' digit+
 		)
 		ExponentPart?
-	) %{ this.number = parseFloat(data.slice(this.ts, p)); };
+	) %{ this.token.number = parseFloat(data.slice(this.ts, p)); };
 
 BinaryIntegerLiteral =
-	'0' [bB] [01]+ >startNumber ${ this.number = (this.number << 1) | (fc - CHR_0); };
+	'0' [bB] [01]+ >startNumber ${ this.token.number = (this.token.number << 1) | (fc - CHR_0); };
 
 OctalIntegerLiteral =
-	'0' [oO] [0-7]+ >startNumber ${ this.number = (this.number << 3) | (fc - CHR_0); };
+	'0' [oO] [0-7]+ >startNumber ${ this.token.number = (this.token.number << 3) | (fc - CHR_0); };
 
 HexIntegerLiteral =
-	'0' [xX] hexDigit+ >startNumber;
+	'0' [xX] hexDigit+ >startHexNumber %{ this.token.number = this.hexNumber; };
 
 NumericLiteral =
 	(
@@ -182,12 +186,12 @@ LineContinuation = '\\' LineTerminatorSequence;
 
 SingleEscapeCharacter =
 	["'\\] @appendByte |
-	'b' @{ this.string += '\b'; } |
-	'f' @{ this.string += '\f'; } |
-	'n' @{ this.string += '\n'; } |
-	'r' @{ this.string += '\r'; } |
-	't' @{ this.string += '\t'; } |
-	'v' @{ this.string += '\v'; };
+	'b' @{ this.token.string += '\b'; } |
+	'f' @{ this.token.string += '\f'; } |
+	'n' @{ this.token.string += '\n'; } |
+	'r' @{ this.token.string += '\r'; } |
+	't' @{ this.token.string += '\t'; } |
+	'v' @{ this.token.string += '\v'; };
 
 EscapeCharacter =
 	SingleEscapeCharacter |
@@ -203,7 +207,7 @@ CharacterEscapeSequence =
 
 EscapeSequence =
 	CharacterEscapeSequence |
-	'0' ^digit @lookahead @{ this.string += '\0'; } |
+	'0' ^digit @lookahead @{ this.token.string += '\0'; } |
 	HexEscapeSequence |
 	UnicodeEscapeSequence;
 
@@ -252,7 +256,7 @@ TemplateCharacter =
 	'$' ^'{' @lookahead @appendByte |
 	'\\' EscapeSequence |
 	LineContinuation |
-	LineTerminatorSequence @{ this.string += this.lineTerminator; } |
+	LineTerminatorSequence @{ this.token.string += this.lineTerminator; } |
 	^([`\\$] | LineTerminator) @appendByte;
 
 Template =
@@ -282,23 +286,25 @@ main := (
 	InputElement
 	>{
 		this.ts = p;
+		this.token = {};
 	}
 	%{
-		this.push({
-			raw: data.slice(this.ts, p).toString(),
-			lastNumber: this.number,
-			lastString: this.string
-		});
+		this.token.raw = data.slice(this.ts, p).toString();
+		this.push(this.token);
 		this.ts = -1;
+		this.token = null;
 	}
 )**;
 
 write data;
 }%%
 
+const StringDecoder = require('string_decoder').StringDecoder;
+
 const CHR_0 = '0'.charCodeAt(0);
 const CHR_A = 'A'.charCodeAt(0);
 const CHR_a = 'a'.charCodeAt(0);
+
 const BUFFER_ZERO = new Buffer(0);
 
 module.exports = class Lexer extends require('stream').Transform {
@@ -309,13 +315,13 @@ module.exports = class Lexer extends require('stream').Transform {
 		});
 		%%write init;
 		this.ts = -1;
+		this.token = null;
 		this.tmplLevel = 0;
 		this.permitRegexp = false;
 		this.lastChunk = BUFFER_ZERO;
 		this.decoder = new StringDecoder();
 
-		this.number = 0;
-		this.string = '';
+		this.hexNumber = 0;
 		this.lineTerminator = '';
 	}
 
