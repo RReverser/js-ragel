@@ -273,7 +273,7 @@ module.exports = class Lexer extends require('stream').Transform {
 		const eof = isLast ? pe : -1;
 		data = Buffer.concat([ this.lastChunk, data ], pe);
 		%%write exec;
-		if (this.cs === 0 || isLast && this.ts >= 0) {
+		if (this.cs === javascript_error || isLast && this.ts >= 0) {
 			return callback(new Error('Could not parse token starting with ' + JSON.stringify(data.slice(this.ts).toString())));
 		}
 		this.lastChunk = data.slice(this.ts);
