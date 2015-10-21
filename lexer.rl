@@ -24,18 +24,6 @@ action startLocalHex {
 	var hexNumber = 0;
 }
 
-action parseLocalHex {
-	hexNumber <<= 4;
-	var c = fc;
-	if (c >= CHR_a) {
-		hexNumber |= c - CHR_a;
-	} else if (c >= CHR_A) {
-		hexNumber |= c - CHR_A;
-	} else {
-		hexNumber |= c - CHR_0;
-	}
-}
-
 include "unicode.rl";
 
 TAB = '\t';
@@ -44,6 +32,11 @@ FF = '\f';
 SP = ' ';
 LF = '\n';
 CR = '\r';
+
+hexDigit =
+	[0-9] @{ hexNumber = (hexNumber << 4) | (fc - CHR_0) } |
+	[A-F] @{ hexNumber = (hexNumber << 4) | (fc - CHR_A) } |
+	[a-f] @{ hexNumber = (hexNumber << 4) | (fc - CHR_a) };
 
 WhiteSpace =
 	TAB |
@@ -70,15 +63,15 @@ LineTerminatorSequence =
 	PS %{ this.string += '\u2029'; };
 
 HexEscapeSequence =
-	'x' xdigit{2} >startLocalHex $parseLocalHex %{
+	'x' hexDigit{2} >startLocalHex %{
 		this.string += String.fromCharCode(hexNumber);
 	};
 
 UnicodeEscapeSequence =
-	'u' xdigit{4} >startLocalHex $parseLocalHex %{
+	'u' hexDigit{4} >startLocalHex %{
 		this.string += String.fromCharCode(hexNumber);
 	} |
-	'u{' xdigit+ >startLocalHex $parseLocalHex %{
+	'u{' hexDigit+ >startLocalHex %{
 		this.string += String.fromCodePoint(hexNumber);
 	} '}';
 
@@ -176,7 +169,7 @@ OctalIntegerLiteral =
 	'0' [oO] [0-7]+ >startNumber ${ this.number = (this.number << 3) | (fc - CHR_0); };
 
 HexIntegerLiteral =
-	'0' [xX] xdigit+ >startLocalHex $parseLocalHex %{ this.number = hexNumber; };
+	'0' [xX] hexDigit+ >startLocalHex %{ this.number = hexNumber; };
 
 NumericLiteral =
 	DecimalLiteral |
