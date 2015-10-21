@@ -168,10 +168,12 @@ HexIntegerLiteral =
 	'0' [xX] hexDigit+ >startNumber;
 
 NumericLiteral =
-	DecimalLiteral |
-	BinaryIntegerLiteral |
-	OctalIntegerLiteral |
-	HexIntegerLiteral;
+	(
+		DecimalLiteral |
+		BinaryIntegerLiteral |
+		OctalIntegerLiteral |
+		HexIntegerLiteral
+	) ^(IdentifierStart | digit) @lookahead;
 
 LineContinuation = '\\' LineTerminatorSequence;
 
@@ -198,7 +200,7 @@ CharacterEscapeSequence =
 
 EscapeSequence =
 	CharacterEscapeSequence |
-	'0' ^digit @lookahead %{ this.string += '\0'; } |
+	'0' ^digit @lookahead @{ this.string += '\0'; } |
 	HexEscapeSequence |
 	UnicodeEscapeSequence;
 
