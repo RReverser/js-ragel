@@ -1,6 +1,8 @@
 const JSONStream = require('JSONStream');
 const Lexer = require('./lexer');
 
+process.stdin.setRawMode(true);
+
 process.stdin
 .pipe(new Lexer())
 .pipe(JSONStream.stringify('', '\n', ''))

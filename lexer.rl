@@ -3,6 +3,7 @@ machine javascript;
 
 getkey data[p];
 access this.;
+variable eof this.eof;
 alphtype u8;
 
 action lookahead { fhold; }
@@ -41,10 +42,6 @@ action finishToken {
 	this.token.raw = data.slice(this.ts, p).toString();
 	this.push(this.token);
 	this.token = {};
-}
-
-action resetToken {
-	this.ts = -1;
 }
 
 include "unicode.rl";
@@ -299,6 +296,7 @@ CommonToken =
 	Template;
 
 InputElement =
+	0x04 @{ process.stdin.setRawMode(false); process.stdin.end(); } |
 	WhiteSpace |
 	LineTerminator |
 	(
@@ -311,7 +309,7 @@ InputElement =
 	) %finishToken;
 
 main := (
-	InputElement >startToken %resetToken
+	InputElement >startToken
 )** $!{
 	return callback(new Error('Could not parse token starting with ' + JSON.stringify(data.slice(this.ts).toString()) + ' (last pos: ' + (p - this.ts) + ')'));
 };
@@ -334,20 +332,19 @@ module.exports = class Lexer extends require('stream').Transform {
 			objectMode: true
 		});
 		%%write init;
-		this.ts = -1;
+		this.eof = -1;
+		this.ts = 0;
 		this.token = {};
 		this.tmplLevel = 0;
 		this.permitRegexp = false;
 		this.lastChunk = BUFFER_ZERO;
 		this.decoder = new StringDecoder();
-
 		this.hexNumber = 0;
 	}
 
-	_exec(data, isLast, callback) {
+	_exec(data, callback) {
 		let p = this.lastChunk.length;
 		const pe = p + data.length;
-		const eof = isLast ? pe : -1;
 		data = Buffer.concat([ this.lastChunk, data ], pe);
 		%%write exec;
 		this.lastChunk = data.slice(this.ts);
@@ -356,10 +353,11 @@ module.exports = class Lexer extends require('stream').Transform {
 	}
 
 	_transform(data, enc, callback) {
-		this._exec(data, false, callback);
+		this._exec(data, callback);
 	}
 
 	_flush(callback) {
-		this._exec(BUFFER_ZERO, true, callback);
+		this.eof = this.lastChunk.length;
+		this._exec(BUFFER_ZERO, callback);
 	}
 };
