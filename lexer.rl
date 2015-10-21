@@ -261,7 +261,7 @@ module.exports = class Lexer extends require('stream').Transform {
 			objectMode: true
 		});
 		%%write init;
-		this.ts = 0;
+		this.ts = -1;
 		this.tmplLevel = 0;
 		this.permitRegexp = false;
 		this.lastChunk = BUFFER_ZERO;
