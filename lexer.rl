@@ -21,6 +21,14 @@ action appendByte {
 	this.string += this.decoder.write(fc);
 }
 
+action appendCharCode {
+	this.string += String.fromCharCode(this.number);
+}
+
+action appendCodePoint {
+	this.string += String.fromCodePoint(this.number);
+}
+
 include "unicode.rl";
 
 TAB = '\t';
@@ -55,22 +63,16 @@ LineTerminatorSequence =
 		LF |
 		CR ^LF @lookahead |
 		CR LF
-	) %{ this.string += '\n'; } |
-	LS %{ this.string += '\u2028'; } |
-	PS %{ this.string += '\u2029'; };
+	) @{ this.lineTerminator = '\n'; } |
+	LS @{ this.lineTerminator = '\u2028'; } |
+	PS @{ this.lineTerminator = '\u2029'; };
 
 HexEscapeSequence =
-	'x' hexDigit{2} >startNumber %{
-		this.string += String.fromCharCode(this.number);
-	};
+	'x' hexDigit{2} >startNumber %appendCharCode;
 
 UnicodeEscapeSequence =
-	'u' hexDigit{4} >startNumber %{
-		this.string += String.fromCharCode(this.number);
-	} |
-	'u{' hexDigit+ >startNumber %{
-		this.string += String.fromCodePoint(this.number);
-	} '}';
+	'u' hexDigit{4} >startNumber @appendCharCode |
+	'u{' hexDigit+ >startNumber '}' @appendCodePoint;
 
 MultiLineComment = '/*' any* :>> '*/';
 
@@ -250,7 +252,7 @@ TemplateCharacter =
 	'$' ^'{' @lookahead @appendByte |
 	'\\' EscapeSequence |
 	LineContinuation |
-	LineTerminatorSequence |
+	LineTerminatorSequence @{ this.string += this.lineTerminator; } |
 	^([`\\$] | LineTerminator) @appendByte;
 
 Template =
@@ -314,6 +316,7 @@ module.exports = class Lexer extends require('stream').Transform {
 
 		this.number = 0;
 		this.string = '';
+		this.lineTerminator = '';
 	}
 
 	_exec(data, isLast, callback) {
