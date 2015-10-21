@@ -238,12 +238,21 @@ InputElement =
 	TemplateSubstitutionTail when { this.tmplLevel } |
 	RightBracePunctuator when { !this.tmplLevel };
 
-main := |*
-	InputElement => { this.push({ raw: data.slice(this.ts, this.te).toString() }); };
-*|;
+main := (
+	InputElement
+	>{
+		this.ts = p;
+	}
+	%{
+		this.push({ raw: data.slice(this.ts, p).toString() });
+		this.ts = -1;
+	}
+)**;
 
 write data;
 }%%
+
+const BUFFER_ZERO = new Buffer(0);
 
 module.exports = class Lexer extends require('stream').Transform {
 	constructor() {
@@ -252,38 +261,31 @@ module.exports = class Lexer extends require('stream').Transform {
 			objectMode: true
 		});
 		%%write init;
+		this.ts = 0;
 		this.tmplLevel = 0;
 		this.permitRegexp = false;
-		this.lastChunk = null;
+		this.lastChunk = BUFFER_ZERO;
 	}
 
-	_exec(data, callback) {
-		let p = 0;
-		const isLast = data === null;
-		if (this.lastChunk !== null) {
-			p = this.lastChunk.length;
-			data = isLast ? this.lastChunk : Buffer.concat([ this.lastChunk, data ]);
-			this.lastChunk = null;
-		}
-		const pe = data ? data.length : 0;
+	_exec(data, isLast, callback) {
+		let p = this.lastChunk.length;
+		const pe = p + data.length;
 		const eof = isLast ? pe : -1;
+		data = Buffer.concat([ this.lastChunk, data ], pe);
 		%%write exec;
-		if (this.cs === 0 || this.ts >= 0 && isLast) {
+		if (this.cs === 0 || isLast && this.ts >= 0) {
 			return callback(new Error('Could not parse token starting with ' + JSON.stringify(data.slice(this.ts).toString())));
 		}
-		if (this.ts >= 0) {
-			this.lastChunk = data.slice(this.ts);
-			this.te -= this.ts;
-			this.ts = 0;
-		}
+		this.lastChunk = data.slice(this.ts);
+		this.ts = 0;
 		callback();
 	}
 
 	_transform(data, enc, callback) {
-		this._exec(data, callback);
+		this._exec(data, false, callback);
 	}
 
 	_flush(callback) {
-		this._exec(null, callback);
+		this._exec(BUFFER_ZERO, true, callback);
 	}
 };
