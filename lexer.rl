@@ -33,6 +33,20 @@ action appendHexCodePoint {
 	this.token.string += String.fromCodePoint(this.hexNumber);
 }
 
+action startToken {
+	this.ts = p;
+}
+
+action finishToken {
+	this.token.raw = data.slice(this.ts, p).toString();
+	this.push(this.token);
+	this.token = {};
+}
+
+action resetToken {
+	this.ts = -1;
+}
+
 include "unicode.rl";
 
 TAB = '\t';
@@ -287,26 +301,20 @@ CommonToken =
 InputElement =
 	WhiteSpace |
 	LineTerminator |
-	Comment |
-	CommonToken |
-	RegularExpressionLiteral when { this.permitRegexp } |
-	DivPunctuator when { !this.permitRegexp } |
-	TemplateSubstitutionTail when { this.tmplLevel } |
-	RightBracePunctuator when { !this.tmplLevel };
+	(
+		Comment |
+		CommonToken |
+		RegularExpressionLiteral when { this.permitRegexp } |
+		DivPunctuator when { !this.permitRegexp } |
+		TemplateSubstitutionTail when { this.tmplLevel } |
+		RightBracePunctuator when { !this.tmplLevel }
+	) %finishToken;
 
 main := (
-	InputElement
-	>{
-		this.ts = p;
-		this.token = {};
-	}
-	%{
-		this.token.raw = data.slice(this.ts, p).toString();
-		this.push(this.token);
-		this.ts = -1;
-		this.token = null;
-	}
-)**;
+	InputElement >startToken %resetToken
+)** $!{
+	return callback(new Error('Could not parse token starting with ' + JSON.stringify(data.slice(this.ts).toString()) + ' (last pos: ' + (p - this.ts) + ')'));
+};
 
 write data;
 }%%
@@ -327,7 +335,7 @@ module.exports = class Lexer extends require('stream').Transform {
 		});
 		%%write init;
 		this.ts = -1;
-		this.token = null;
+		this.token = {};
 		this.tmplLevel = 0;
 		this.permitRegexp = false;
 		this.lastChunk = BUFFER_ZERO;
@@ -342,9 +350,6 @@ module.exports = class Lexer extends require('stream').Transform {
 		const eof = isLast ? pe : -1;
 		data = Buffer.concat([ this.lastChunk, data ], pe);
 		%%write exec;
-		if (this.cs === javascript_error || isLast && this.ts >= 0) {
-			return callback(new Error('Could not parse token starting with ' + JSON.stringify(data.slice(this.ts).toString()) + ' (last pos: ' + (p - this.ts) + ')'));
-		}
 		this.lastChunk = data.slice(this.ts);
 		this.ts = 0;
 		callback();
