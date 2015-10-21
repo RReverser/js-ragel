@@ -14,10 +14,11 @@ action startNumber {
 
 action startString {
 	this.string = '';
+	this.decoder.charReceived = this.decoder.charLength = 0;
 }
 
-action appendChar {
-	this.string += String.fromCharCode(fc);
+action appendByte {
+	this.string += this.decoder.write(fc);
 }
 
 include "unicode.rl";
@@ -178,7 +179,7 @@ NumericLiteral =
 LineContinuation = '\\' LineTerminatorSequence;
 
 SingleEscapeCharacter =
-	["'\\] @appendChar |
+	["'\\] @appendByte |
 	'b' @{ this.string += '\b'; } |
 	'f' @{ this.string += '\f'; } |
 	'n' @{ this.string += '\n'; } |
@@ -192,7 +193,7 @@ EscapeCharacter =
 	[xu];
 
 NonEscapeCharacter =
-	^(EscapeCharacter | LineTerminator) @appendChar;
+	^(EscapeCharacter | LineTerminator) @appendByte;
 
 CharacterEscapeSequence =
 	SingleEscapeCharacter |
@@ -205,12 +206,12 @@ EscapeSequence =
 	UnicodeEscapeSequence;
 
 DoubleStringCharacter =
-	^('"' | '\\' | LineTerminator) @appendChar |
+	^('"' | '\\' | LineTerminator) @appendByte |
 	'\\' EscapeSequence |
 	LineContinuation;
 
 SingleStringCharacter =
-	^("'" | '\\' | LineTerminator) @appendChar |
+	^("'" | '\\' | LineTerminator) @appendByte |
 	'\\' EscapeSequence |
 	LineContinuation;
 
@@ -246,11 +247,11 @@ RegularExpressionLiteral =
 	'/' RegularExpressionBody '/' RegularExpressionFlags;
 
 TemplateCharacter =
-	'$' ^'{' @lookahead @appendChar |
+	'$' ^'{' @lookahead @appendByte |
 	'\\' EscapeSequence |
 	LineContinuation |
 	LineTerminatorSequence |
-	^([`\\$] | LineTerminator) @appendChar;
+	^([`\\$] | LineTerminator) @appendByte;
 
 Template =
 	'`' @{ this.tmplLevel++; } TemplateCharacter* >startString ('`' | '${');
@@ -309,6 +310,7 @@ module.exports = class Lexer extends require('stream').Transform {
 		this.tmplLevel = 0;
 		this.permitRegexp = false;
 		this.lastChunk = BUFFER_ZERO;
+		this.decoder = new StringDecoder();
 
 		this.number = 0;
 		this.string = '';
