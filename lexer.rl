@@ -63,13 +63,11 @@ LineTerminator =
 	PS;
 
 LineTerminatorSequence =
-	(
-		LF |
-		CR ^LF @lookahead |
-		CR LF
-	) @{ this.lineTerminator = '\n'; } |
-	LS @{ this.lineTerminator = '\u2028'; } |
-	PS @{ this.lineTerminator = '\u2029'; };
+	LF |
+	CR ^LF @lookahead |
+	CR LF |
+	LS |
+	PS;
 
 HexEscapeSequence =
 	'x' hexDigit{2} >startHexNumber @appendHexCharCode;
@@ -256,7 +254,21 @@ TemplateCharacter =
 	'$' ^'{' @lookahead @appendByte |
 	'\\' EscapeSequence |
 	LineContinuation |
-	LineTerminatorSequence @{ this.token.string += this.lineTerminator; } |
+	LineTerminatorSequence @{
+		switch (fc) {
+			case 0xA8: // last byte of LS
+				this.token.string += '\u2028';
+				break;
+
+			case 0xA9: // last byte of PS
+				this.token.string += '\u2029';
+				break;
+
+			default: // LF | CR LF | CR
+				this.token.string += '\n';
+				break;
+		}
+	} |
 	^([`\\$] | LineTerminator) @appendByte;
 
 Template =
@@ -322,7 +334,6 @@ module.exports = class Lexer extends require('stream').Transform {
 		this.decoder = new StringDecoder();
 
 		this.hexNumber = 0;
-		this.lineTerminator = '';
 	}
 
 	_exec(data, isLast, callback) {
