@@ -20,10 +20,6 @@ action appendChar {
 	this.string += String.fromCharCode(fc);
 }
 
-action startLocalHex {
-	var hexNumber = 0;
-}
-
 include "unicode.rl";
 
 TAB = '\t';
@@ -34,9 +30,9 @@ LF = '\n';
 CR = '\r';
 
 hexDigit =
-	[0-9] @{ hexNumber = (hexNumber << 4) | (fc - CHR_0) } |
-	[A-F] @{ hexNumber = (hexNumber << 4) | (fc - CHR_A) } |
-	[a-f] @{ hexNumber = (hexNumber << 4) | (fc - CHR_a) };
+	[0-9] @{ this.number = (this.number << 4) | (fc - CHR_0) } |
+	[A-F] @{ this.number = (this.number << 4) | (fc - CHR_A) } |
+	[a-f] @{ this.number = (this.number << 4) | (fc - CHR_a) };
 
 WhiteSpace =
 	TAB |
@@ -63,16 +59,16 @@ LineTerminatorSequence =
 	PS %{ this.string += '\u2029'; };
 
 HexEscapeSequence =
-	'x' hexDigit{2} >startLocalHex %{
-		this.string += String.fromCharCode(hexNumber);
+	'x' hexDigit{2} >startNumber %{
+		this.string += String.fromCharCode(this.number);
 	};
 
 UnicodeEscapeSequence =
-	'u' hexDigit{4} >startLocalHex %{
-		this.string += String.fromCharCode(hexNumber);
+	'u' hexDigit{4} >startNumber %{
+		this.string += String.fromCharCode(this.number);
 	} |
-	'u{' hexDigit+ >startLocalHex %{
-		this.string += String.fromCodePoint(hexNumber);
+	'u{' hexDigit+ >startNumber %{
+		this.string += String.fromCodePoint(this.number);
 	} '}';
 
 MultiLineComment = '/*' any* :>> '*/';
@@ -169,7 +165,7 @@ OctalIntegerLiteral =
 	'0' [oO] [0-7]+ >startNumber ${ this.number = (this.number << 3) | (fc - CHR_0); };
 
 HexIntegerLiteral =
-	'0' [xX] hexDigit+ >startLocalHex %{ this.number = hexNumber; };
+	'0' [xX] hexDigit+ >startNumber;
 
 NumericLiteral =
 	DecimalLiteral |
