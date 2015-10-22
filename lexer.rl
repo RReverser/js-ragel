@@ -4,6 +4,7 @@ machine javascript;
 getkey data[p];
 access this.;
 variable eof this.eof;
+variable pe data.length;
 alphtype u8;
 
 action lookahead { fhold; }
@@ -17,31 +18,34 @@ action startHexNumber {
 	this.hexNumber = 0;
 }
 
-action startString {
-	this.token.string = '';
-	this.decoder.charReceived = this.decoder.charLength = 0;
-}
-
 action appendByte {
-	this.token.string += this.decoder.write(data.slice(p, p + 1));
+	this.decoder.writeBuffer(data.slice(p, p + 1));
 }
 
 action appendHexCharCode {
-	this.token.string += String.fromCharCode(this.hexNumber);
+	this.decoder.writeString(String.fromCharCode(this.hexNumber));
 }
 
 action appendHexCodePoint {
-	this.token.string += String.fromCodePoint(this.hexNumber);
+	this.decoder.writeString(String.fromCodePoint(this.hexNumber));
+}
+
+action endString {
+	this.token.string = this.decoder.end(true);
 }
 
 action startToken {
-	this.ts = p;
+	ts = p;
 }
 
 action finishToken {
-	this.token.raw = data.slice(this.ts, p).toString();
+	this.token.raw = this.rawDecoder.end(true);
 	this.push(this.token);
 	this.token = {};
+}
+
+action readRaw {
+	this.rawDecoder.writeBuffer(data.slice(rs, rs = p));
 }
 
 include "unicode.rl";
@@ -172,7 +176,9 @@ DecimalLiteral =
 			'.' digit+
 		)
 		ExponentPart?
-	) %{ this.token.number = parseFloat(data.slice(this.ts, p)); };
+	) %readRaw %{
+		this.token.number = parseFloat(this.rawDecoder.end(false));
+	};
 
 BinaryIntegerLiteral =
 	'0' [bB] [01]+ >startNumber ${ this.token.number = (this.token.number << 1) | (fc - CHR_0); };
@@ -184,23 +190,21 @@ HexIntegerLiteral =
 	'0' [xX] hexDigit+ >startHexNumber %{ this.token.number = this.hexNumber; };
 
 NumericLiteral =
-	(
-		DecimalLiteral |
-		BinaryIntegerLiteral |
-		OctalIntegerLiteral |
-		HexIntegerLiteral
-	) ^(IdentifierStart | digit) @lookahead;
+	DecimalLiteral |
+	BinaryIntegerLiteral |
+	OctalIntegerLiteral |
+	HexIntegerLiteral;
 
 LineContinuation = '\\' LineTerminatorSequence;
 
 SingleEscapeCharacter =
 	["'\\] @appendByte |
-	'b' @{ this.token.string += '\b'; } |
-	'f' @{ this.token.string += '\f'; } |
-	'n' @{ this.token.string += '\n'; } |
-	'r' @{ this.token.string += '\r'; } |
-	't' @{ this.token.string += '\t'; } |
-	'v' @{ this.token.string += '\v'; };
+	'b' @{ this.decoder.writeString('\b'); } |
+	'f' @{ this.decoder.writeString('\f'); } |
+	'n' @{ this.decoder.writeString('\n'); } |
+	'r' @{ this.decoder.writeString('\r'); } |
+	't' @{ this.decoder.writeString('\t'); } |
+	'v' @{ this.decoder.writeString('\v'); };
 
 EscapeCharacter =
 	SingleEscapeCharacter |
@@ -216,7 +220,7 @@ CharacterEscapeSequence =
 
 EscapeSequence =
 	CharacterEscapeSequence |
-	'0' ^digit @lookahead @{ this.token.string += '\0'; } |
+	'0' ^digit @lookahead @{ this.decoder.writeString('\0'); } |
 	HexEscapeSequence |
 	UnicodeEscapeSequence;
 
@@ -231,8 +235,8 @@ SingleStringCharacter =
 	LineContinuation;
 
 StringLiteral =
-	'"' DoubleStringCharacter* >startString '"' |
-	"'" SingleStringCharacter* >startString "'";
+	'"' DoubleStringCharacter* %endString '"' |
+	"'" SingleStringCharacter* %endString "'";
 
 RegularExpressionNonTerminator = ^LineTerminator;
 
@@ -268,25 +272,25 @@ TemplateCharacter =
 	LineTerminatorSequence @{
 		switch (fc) {
 			case 0xA8: // last byte of LS
-				this.token.string += '\u2028';
+				this.decoder.writeString('\u2028');
 				break;
 
 			case 0xA9: // last byte of PS
-				this.token.string += '\u2029';
+				this.decoder.writeString('\u2029');
 				break;
 
 			default: // LF | CR LF | CR
-				this.token.string += '\n';
+				this.decoder.writeString('\n');
 				break;
 		}
 	} |
 	^([`\\$] | LineTerminator) @appendByte;
 
 Template =
-	'`' @{ this.tmplLevel++; } TemplateCharacter* >startString ('`' | '${');
+	'`' @{ this.tmplLevel++; } TemplateCharacter* %endString ('`' | '${');
 
 TemplateSubstitutionTail =
-	'}' TemplateCharacter* >startString ('${' | '`' @{ this.tmplLevel--; });
+	'}' TemplateCharacter* %endString ('${' | '`' @{ this.tmplLevel--; });
 
 CommonToken =
 	IdentifierName |
@@ -306,18 +310,42 @@ InputElement =
 		DivPunctuator when { !this.permitRegexp } |
 		TemplateSubstitutionTail when { this.tmplLevel } |
 		RightBracePunctuator when { !this.tmplLevel }
-	) %finishToken;
+	) %readRaw %finishToken;
 
 main := (
 	InputElement >startToken
-)** $!{
-	return callback(new Error('Could not parse token starting with ' + JSON.stringify(data.slice(this.ts).toString()) + ' (last pos: ' + (p - this.ts) + ')'));
+)** $!readRaw $!{
+	return callback(new Error('Could not parse token ' + JSON.stringify(this.rawDecoder.end(false))));
 };
 
 write data;
 }%%
 
-const StringDecoder = require('string_decoder').StringDecoder;
+const InternalStringDecoder = require('string_decoder').StringDecoder;
+
+class StringDecoder {
+	constructor() {
+		this.buffer = '';
+		this.internal = new InternalStringDecoder();
+	}
+
+	writeBuffer(chunk) {
+		return this.buffer += this.internal.write(chunk);
+	}
+
+	end(reset) {
+		let buffer = this.buffer += this.internal.end();
+		this.internal.charReceived = this.internal.charLength = 0;
+		if (reset) {
+			this.buffer = '';
+		}
+		return buffer;
+	}
+
+	writeString(str) {
+		return this.buffer = this.end(false) + str;
+	}
+}
 
 const CHR_0 = '0'.charCodeAt(0);
 const CHR_A = 'A'.charCodeAt(0);
@@ -333,31 +361,27 @@ module.exports = class Lexer extends require('stream').Transform {
 		});
 		%%write init;
 		this.eof = -1;
-		this.ts = 0;
 		this.token = {};
 		this.tmplLevel = 0;
 		this.permitRegexp = false;
-		this.lastChunk = BUFFER_ZERO;
 		this.decoder = new StringDecoder();
+		this.rawDecoder = new StringDecoder();
 		this.hexNumber = 0;
 	}
 
-	_exec(data, callback) {
-		let p = this.lastChunk.length;
-		const pe = p + data.length;
-		data = Buffer.concat([ this.lastChunk, data ], pe);
+	exec(data, callback) {
+		let p = 0, ts = 0, rs = 0;
 		%%write exec;
-		this.lastChunk = data.slice(this.ts);
-		this.ts = 0;
+		this.rawDecoder.writeBuffer(data.slice(rs));
 		callback();
 	}
 
 	_transform(data, enc, callback) {
-		this._exec(data, callback);
+		this.exec(data, callback);
 	}
 
 	_flush(callback) {
-		this.eof = this.lastChunk.length;
-		this._exec(BUFFER_ZERO, callback);
+		this.eof = 0;
+		this.exec(BUFFER_ZERO, callback);
 	}
 };
