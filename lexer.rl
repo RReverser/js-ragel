@@ -300,7 +300,6 @@ CommonToken =
 	Template;
 
 InputElement =
-	0x04 @{ process.stdin.setRawMode(false); process.stdin.end(); } |
 	WhiteSpace |
 	LineTerminator |
 	(

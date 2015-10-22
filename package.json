@@ -18,11 +18,10 @@
   "author": "Ingvar Stepanyan <me@rreverser.com> (https://rreverser.com/)",
   "license": "MIT",
   "dependencies": {
-    "JSONStream": "^1.0.6"
+    "through2": "^2.0.0"
   },
   "devDependencies": {
-    "highland": "^2.5.1",
-    "through2": "^2.0.0"
+    "highland": "^2.5.1"
   },
   "private": true
 }
