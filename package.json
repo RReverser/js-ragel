@@ -4,8 +4,8 @@
   "description": "JS lexer in Ragel",
   "main": "cli.js",
   "scripts": {
-    "build-unicode": "node gen-unicode",
-    "build": "../ragel/bin/ragel -P lexer.rl",
+    "build-unicode": "node --harmony_destructuring --harmony_rest_parameters gen-unicode",
+    "build": "../ragel/bin/ragel --error-format=msvc -P lexer.rl",
     "prepublish": "npm run build-unicode && npm run build"
   },
   "repository": "RReverser/js-ragel",
@@ -17,9 +17,7 @@
   ],
   "author": "Ingvar Stepanyan <me@rreverser.com> (https://rreverser.com/)",
   "license": "MIT",
-  "dependencies": {
-    "through2": "^2.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "highland": "^2.5.1"
   },
