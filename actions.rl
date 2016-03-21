@@ -14,53 +14,32 @@ action forbidRegexp { !this.permitRegexp }
 action permitTmplTail { this.tmplLevel }
 action forbidTmplTail { !this.tmplLevel }
 
-action hexNumberStart {
-    this.hexNumber = 0;
-}
-
-action hexNumberEscapeEnd {
-    this.string += String.fromCharCode(this.hexNumber);
-}
-
-action hexNumberEnd {
-    this.number = this.hexNumber;
-}
-
-action numberStart {
-    this.number = 0;
-}
-
-action hexNumber_09 {
-    this.hexNumber = (this.hexNumber << 4) | (fc - CHR_0);
-}
-
-action hexNumber_AF {
-    this.hexNumber = (this.hexNumber << 4) | (fc - CHR_A + 0xA);
-}
-
-action hexNumber_af {
-    this.hexNumber = (this.hexNumber << 4) | (fc - CHR_a + 0xa);
-}
-
-action binNumberDigit {
-    this.number = (this.number << 1) | (fc - CHR_0);
-}
-
-action octNumberDigit {
-    this.number = (this.number << 3) | (fc - CHR_0);
-}
-
 action rawSliceStart {
     this.rawSliceStart = p;
 }
 
 action rawSliceEnd {
     this.string += data.slice(this.rawSliceStart, p);
-    console.log('Added "%s" slice', data.slice(this.rawSliceStart, p));
+}
+
+action rawSliceBinEnd {
+    this.number = parseInt(data.slice(this.rawSliceStart, p), 2);
+}
+
+action rawSliceOctEnd {
+    this.number = parseInt(data.slice(this.rawSliceStart, p), 8);
+}
+
+action rawSliceHexEnd {
+    this.number = parseInt(data.slice(this.rawSliceStart, p), 16);
 }
 
 action rawSliceFloatEnd {
     this.number = parseFloat(data.slice(this.rawSliceStart, p));
+}
+
+action hexEscapeEnd {
+    this.string += String.fromCharCode(this.number);
 }
 
 action regexpDelimiter {

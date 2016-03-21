@@ -12,11 +12,6 @@ SP = ' ';
 LF = '\n';
 CR = '\r';
 
-hexDigit =
-	[0-9] @hexNumber_09 |
-	[A-F] @hexNumber_AF |
-	[a-f] @hexNumber_af;
-
 WhiteSpace =
 	TAB |
 	VT |
@@ -40,11 +35,11 @@ LineTerminatorSequence =
 	PS;
 
 HexEscapeSequence =
-	'x' hexDigit{2} >hexNumberStart %hexNumberEscapeEnd;
+	'x' xdigit{2} >rawSliceStart %rawSliceHexEnd %hexEscapeEnd;
 
 UnicodeEscapeSequence =
-	'u' hexDigit{4} >hexNumberStart %hexNumberEscapeEnd |
-	'u{' hexDigit+ >hexNumberStart %hexNumberEscapeEnd '}';
+	'u' xdigit{4} >rawSliceStart %rawSliceHexEnd %hexEscapeEnd |
+	'u{' xdigit+ >rawSliceStart %rawSliceHexEnd %hexEscapeEnd '}';
 
 MultiLineComment = '/*' any* :>> '*/';
 
@@ -135,13 +130,13 @@ DecimalLiteral =
     ) >rawSliceStart %rawSliceFloatEnd;
 
 BinaryIntegerLiteral =
-	'0' [bB] [01]+ >numberStart $binNumberDigit;
+	'0' [bB] [01]+ >rawSliceStart %rawSliceBinEnd;
 
 OctalIntegerLiteral =
-	'0' [oO] [0-7]+ >numberStart $octNumberDigit;
+	'0' [oO] [0-7]+ >rawSliceStart %rawSliceOctEnd;
 
 HexIntegerLiteral =
-	'0' [xX] hexDigit+ >hexNumberStart %hexNumberEnd;
+	'0' [xX] xdigit+ >rawSliceStart %rawSliceHexEnd;
 
 NumericLiteral =
 	DecimalLiteral |
