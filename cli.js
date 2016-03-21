@@ -22,7 +22,7 @@ process.stdin
         callback();
     }
 }))
-.pipe(new Lexer())
+.pipe(new Lexer({ goal: 'script' }))
 .pipe(new Transform({
     objectMode: true,
     

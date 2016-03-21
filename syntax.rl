@@ -83,7 +83,7 @@ Keyword =
 	'delete'     | 'import'  | 'try'        ;
 
 FutureReservedWord =
-	'enum'       | 'await'   |
+	'enum'       | 'await' when inModule |
 	(
 	'implements' | 'package' | 'protected'  |
 	'interface'  | 'private' | 'public'

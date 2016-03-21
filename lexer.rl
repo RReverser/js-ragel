@@ -11,7 +11,7 @@ const CHR_0 = charCode('0');
 %%include "syntax.rl";
 
 module.exports = class Lexer extends require('stream').Transform {
-	constructor() {
+	constructor(options) {
 		super({
             decodeStrings: true,
 			readableObjectMode: true
@@ -27,6 +27,9 @@ module.exports = class Lexer extends require('stream').Transform {
         this.leftOver = '';
 		this.tmplLevel = 0;
 		this.permitRegexp = false;
+        
+        this.goal = options.goal;
+        this.strict = this.goal === 'module';
 	}
 
 	exec(data, callback) {

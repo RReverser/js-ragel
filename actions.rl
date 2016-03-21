@@ -5,8 +5,10 @@ access this.;
 variable pe data.length;
 alphtype u16;
 
+action inModule { this.goal === 'module' }
+action inScript { this.goal === 'script' }
 action lookahead { fhold; }
-action strict { strict }
+action strict { this.strict }
 action permitRegexp { this.permitRegexp }
 action forbidRegexp { !this.permitRegexp }
 action permitTmplTail { this.tmplLevel }
