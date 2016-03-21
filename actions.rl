@@ -79,11 +79,9 @@ action stringLF {
 
 action templateStart {
     this.tmplLevel++;
-    console.log('Entering template', this.tmplLevel);
 }
 
 action templateEnd {
-    console.log('Leaving template', this.tmplLevel);
     this.tmplLevel--;
 }
 
@@ -138,9 +136,30 @@ action onStringLiteral {
     });
 }
 
-action onTemplate {
+action onNoSubstitutionTemplate {
     onToken({
-        type: 'Template',
+        type: 'NoSubstitutionTemplate',
+        value: this.string
+    });
+}
+
+action onTemplateHead {
+    onToken({
+        type: 'TemplateHead',
+        value: this.string
+    });
+}
+
+action onTemplateMiddle {
+    onToken({
+        type: 'TemplateMiddle',
+        value: this.string
+    });
+}
+
+action onTemplateTail {
+    onToken({
+        type: 'TemplateTail',
         value: this.string
     });
 }

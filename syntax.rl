@@ -227,13 +227,19 @@ TemplateCharacter =
 	LineContinuation;
 
 TemplateChunk =
-    TemplateCharacter** >stringStart ('`' @templateEnd | '${');
+    TemplateCharacter** >stringStart;
+    
+NoSubstitutionTemplate =
+    '`' TemplateChunk '`';
+    
+TemplateHead =
+    '`' @templateStart TemplateChunk '${';
+    
+TemplateMiddle =
+    '}' when permitTmplTail TemplateChunk '${';
 
-Template =
-	'`' @templateStart TemplateChunk;
-
-TemplateSubstitutionTail =
-	'}' when permitTmplTail TemplateChunk;
+TemplateTail =
+    '}' when permitTmplTail TemplateChunk '`' @templateEnd;
 
 main := |*
     WhiteSpace => onWhiteSpace;
@@ -246,11 +252,14 @@ main := |*
     Punctuator => onPunctuator;
     NumericLiteral => onNumericLiteral;
     StringLiteral => onStringLiteral;
-    Template => onTemplate;
+    
+    NoSubstitutionTemplate => onNoSubstitutionTemplate;
+    TemplateHead => onTemplateHead;
+    TemplateMiddle => onTemplateMiddle;
+    TemplateTail => onTemplateTail;
 
     RegularExpressionLiteral => onRegularExpressionLiteral;
     DivPunctuator => onPunctuator;
-    TemplateSubstitutionTail => onTemplate;
     RightBracePunctuator => onPunctuator;
 *|;
 
