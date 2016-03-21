@@ -7,10 +7,10 @@ alphtype u16;
 
 action lookahead { fhold; }
 action strict { strict }
-action permitRegexp { console.log('Checking permitRegexp'), this.permitRegexp }
-action forbidRegexp { console.log('Checking forbidRegexp'), !this.permitRegexp }
-action permitTmpl { console.log('Checking permitTmpl', this.tmplLevel), this.tmplLevel }
-action forbidTmpl { console.log('Checking forbidTmpl', this.tmplLevel), !this.tmplLevel }
+action permitRegexp { this.permitRegexp }
+action forbidRegexp { !this.permitRegexp }
+action permitTmplTail { this.tmplLevel }
+action forbidTmplTail { !this.tmplLevel }
 
 action hexNumberStart {
     this.hexNumber = 0;

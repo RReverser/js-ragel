@@ -101,7 +101,7 @@ Punctuator =
 
 DivPunctuator = '/' when forbidRegexp '='?;
 
-RightBracePunctuator = '}' when forbidTmpl;
+RightBracePunctuator = '}' when forbidTmplTail;
 
 NullLiteral = 'null';
 
@@ -233,7 +233,7 @@ Template =
 	'`' @templateStart TemplateChunk;
 
 TemplateSubstitutionTail =
-	'}' when permitTmpl TemplateChunk;
+	'}' when permitTmplTail TemplateChunk;
 
 main := |*
     WhiteSpace => onWhiteSpace;
