@@ -67,7 +67,7 @@ action templateEnd {
 }
 
 action onWhiteSpace {
-    
+
 }
 
 action onLineTerminatorSequence {

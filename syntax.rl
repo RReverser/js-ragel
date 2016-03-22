@@ -223,13 +223,13 @@ TemplateCharacter =
 
 TemplateChunk =
     TemplateCharacter** >stringStart;
-    
+
 NoSubstitutionTemplate =
     '`' TemplateChunk '`';
-    
+
 TemplateHead =
     '`' @templateStart TemplateChunk '${';
-    
+
 TemplateMiddle =
     '}' when permitTmplTail TemplateChunk '${';
 
@@ -247,7 +247,7 @@ main := |*
     Punctuator => onPunctuator;
     NumericLiteral => onNumericLiteral;
     StringLiteral => onStringLiteral;
-    
+
     NoSubstitutionTemplate => onNoSubstitutionTemplate;
     TemplateHead => onTemplateHead;
     TemplateMiddle => onTemplateMiddle;

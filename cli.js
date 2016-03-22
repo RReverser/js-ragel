@@ -9,7 +9,7 @@ process.stdin.setRawMode(true);
 process.stdin
 .pipe(new Transform({
     objectMode: true,
-    
+
     transform(chunk, enc, callback) {
         if (chunk[chunk.length - 1] === 0x03) {
             this.push(chunk.slice(0, -1));
@@ -25,7 +25,7 @@ process.stdin
 .pipe(new Lexer({ goal: 'script' }))
 .pipe(new Transform({
     objectMode: true,
-    
+
     transform(token, enc, callback) {
         callback(null, inspect(token, { colors: true }) + '\n');
     }

@@ -18,16 +18,15 @@ module.exports = class Lexer extends require('stream').Transform {
 		});
 
 		%%write init;
-        
+
         this.rawSliceStart = 0;
-        this.hexNumber = 0;
         this.number = 0;
         this.string = '';
-        
+
         this.leftOver = '';
 		this.tmplLevel = 0;
 		this.permitRegexp = false;
-        
+
         this.goal = options.goal;
         this.strict = this.goal === 'module';
 	}

@@ -20,7 +20,7 @@ function splitBy(condition) {
 	let start, end, first = true;
     return new Transform({
         objectMode: true,
-        
+
         transform(item, enc, callback) {
             if (first) {
                 first = false;
@@ -33,7 +33,7 @@ function splitBy(condition) {
             }
             callback();
         },
-        
+
         flush(callback) {
             this.push({ start, end });
 		    callback();
