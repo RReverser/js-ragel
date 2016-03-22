@@ -25,20 +25,23 @@ module.exports = class Lexer extends require('stream').Transform {
 
         this.leftOver = '';
 		this.tmplLevel = 0;
-		this.permitRegexp = false;
+		this.permitRegexp = true;
 
         this.goal = options.goal;
         this.strict = this.goal === 'module';
+        this.onToken = options.onToken;
 	}
+    
+    pushToken(data, token) {
+        token.raw = data.slice(this.ts, this.te);
+        this.onToken(token);
+        this.push(token);
+    }
 
 	exec(data, callback) {
         let p = this.leftOver.length;
         const eof = data !== null ? -1 : p;
         data = this.leftOver + (data || '');
-        const onToken = token => {
-            token.raw = data.slice(this.ts, this.te);
-            this.push(token);
-        };
 		%%write exec;
         if (this.cs === javascript_error) {
             this.emit('error', new Error('Parsing error: unrecognized character at "' + data.slice(p, p + 3) + '..."'));

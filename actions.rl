@@ -71,82 +71,82 @@ action onWhiteSpace {
 }
 
 action onLineTerminatorSequence {
-    onToken({
+    this.pushToken(data, {
         type: 'LineTerminatorSequence'
     });
 }
 
 action onMultiLineComment {
-    onToken({
+    this.pushToken(data, {
         type: 'MultiLineComment',
         value: data.slice(this.ts + 2, this.te)
     });
 }
 
 action onSingleLineComment {
-    onToken({
+    this.pushToken(data, {
         type: 'SingleLineComment',
         value: data.slice(this.ts + 2, this.te - 2)
     });
 }
 
 action onIdentifierName {
-    onToken({
+    this.pushToken(data, {
         type: 'IdentifierName',
         value: this.string
     });
 }
 
 action onPunctuator {
-    onToken({
+    this.pushToken(data, {
         type: 'Punctuator'
     });
 }
 
 action onNumericLiteral {
-    onToken({
+    this.pushToken(data, {
         type: 'NumericLiteral',
         value: this.number
     });
 }
 
 action onStringLiteral {
-    onToken({
+    this.pushToken(data, {
         type: 'StringLiteral',
         value: this.string
     });
 }
 
 action onNoSubstitutionTemplate {
-    onToken({
+    this.pushToken(data, {
         type: 'NoSubstitutionTemplate',
         value: this.string
     });
 }
 
 action onTemplateHead {
-    onToken({
+    this.pushToken(data, {
         type: 'TemplateHead',
         value: this.string
     });
 }
 
 action onTemplateMiddle {
-    onToken({
+    this.pushToken(data, {
         type: 'TemplateMiddle',
         value: this.string
     });
 }
 
 action onTemplateTail {
-    onToken({
+    this.pushToken(data, {
         type: 'TemplateTail',
         value: this.string
     });
 }
 
 action onRegularExpressionLiteral {
-    onToken({
+    this.pushToken(data, {
         type: 'RegularExpressionLiteral',
         body: data.slice(this.ts + 1, this.te - this.string.length - 1),
         flags: this.string
