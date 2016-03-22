@@ -94,7 +94,11 @@ Punctuator =
 	'='   | '+='   | '-='  | '*='  | '%='  | '<<=' |
 	'>>=' | '>>>=' | '&='  | '|='  | '^='  | '=>'  ;
 
-DivPunctuator = '/' when forbidRegexp '='?;
+DivPunctuator =
+    '/' when forbidRegexp (
+        ^'=' @lookahead |
+        '='
+    );
 
 RightBracePunctuator = '}' when forbidTmplTail;
 
